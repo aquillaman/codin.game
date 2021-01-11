@@ -7,11 +7,11 @@ namespace TwentyFortyEight
     internal class Player
     {
         private const int Size = 4;
-        private static readonly Grid Grid = new Grid(Size);
         
         public static void Main(string[] args)
         {
             int[] data = new int[Size*Size];
+            var search = new BeamSearch(Size);
             // game loop
             while (true)
             {
@@ -19,9 +19,6 @@ namespace TwentyFortyEight
                 int seed = int.Parse(Console.ReadLine()); // needed to predict the next spawns
                 int score = int.Parse(Console.ReadLine());
 
-                Console.Error.WriteLine($"seed: {seed}");
-                Console.Error.WriteLine($"score: {score}");
-               
                 for (int i = 0; i < Size; i++)
                 {
                     string[] inputs = Console.ReadLine().Split(' ');
@@ -33,68 +30,90 @@ namespace TwentyFortyEight
                     }
                 }
                 
-                Console.Error.WriteLine($"data: {string.Join(",", data)}");
+                // Console.Error.WriteLine($"seed: {seed}");
+                // Console.Error.WriteLine($"score: {score}");
+                // Console.Error.WriteLine($"data: {string.Join(",", data)}");
 
                 // Write an action using Console.WriteLine()
                 // To debug: Console.Error.WriteLine("Debug messages...");
 
-                Console.WriteLine(SearchBestMoves(seed, score, data));
+                Console.WriteLine("" + search.SearchBestMoves(seed, score, data));
             }
-        }
-
-        private static string SearchBestMoves(int seed, int score, int[] data)
-        {
-            int predictionLevel = 0;
-            int maxPredictionLevel = 4;
-            string[] dirs = {"L","U","R","D"};
-
-            var parents = new Queue<Node>(new[] {new Node {Data = data, Seed = seed}});
-
-            var count = parents.Count;
-            while (predictionLevel < maxPredictionLevel)
-            {
-                var parent = parents.Dequeue();
-                
-                for (int i = 0; i < dirs.Length; i++)
-                {
-                    Grid.Seed = parent.Seed;
-                    Grid.Score = parent.Score;
-                    Grid.SetData(parent.Data);
-                    
-                    Grid.Move(i);
-                    
-                    Node node = Node.Create(dirs[i], parent);
-                    node.Seed = Grid.Seed;
-                    node.Score = Grid.Score;
-                    node.Data = Grid.GetData();
-                    
-                    parents.Enqueue(node);
-                }
-
-                if (--count <= 0)
-                {
-                    predictionLevel++;
-                    count = parents.Count;
-                }
-            }
-
-            int max = int.MinValue;
-            Node maxNode = null;
-            var array = parents.ToArray();
-            for (var i = 0; i < array.Length; i++)
-            {
-                var node = array[i];
-
-                if (max < node.Score)
-                {
-                    max = node.Score;
-                    maxNode = node;
-                }
-            }
-
-            return maxNode.Path;
         }
     }
+    
+    public class BeamSearch
+        {
+            private readonly Grid Grid;
+            private readonly int MaxPredictionLevel;
+
+            public BeamSearch(int gridSize, int predictionLevel = 5)
+            {
+                Grid = new Grid(gridSize);
+                MaxPredictionLevel = predictionLevel;
+            }
+
+            public string SearchBestMoves(int seed, int score, int[] data)
+            {
+                int predictionLevel = 0;
+                
+                string[] dirs = {"L","U","R","D"};
+
+                var parents = new List<Node> {new Node {Data = data, Seed = seed, Score = score}};
+                var children = new List<Node>();
+
+                while (true)
+                {
+                    for (int j = 0; j < parents.Count; j++)
+                    {
+                        var parent = parents[j];
+                
+                        for (int i = 0; i < dirs.Length; i++)
+                        {
+                            Grid.Seed = parent.Seed;
+                            Grid.Score = parent.Score;
+                            Grid.SetData(parent.Data);
+                    
+                            Grid.Move(i);
+
+                            if (Grid.Changed)
+                            {
+                                Node node = Node.Create(dirs[i], parent);
+                                node.Seed = Grid.Seed;
+                                node.Score = Grid.Score;
+                                node.Data = Grid.GetData();
+                    
+                                children.Add(node);
+                            }
+                        }
+                    }
+
+                    int max = int.MinValue;
+                    for (var i = 0; i < children.Count; i++)
+                    {
+                        var child = children[i];
+                        
+                        if (max < child.Score)
+                        {
+                            parents.Clear();
+                            max = child.Score;
+                        }
+
+                        if (max == child.Score)
+                        {
+                            parents.Add(child);
+                        }
+                    }
+
+                    children.Clear();
+                
+                    if (predictionLevel++ > MaxPredictionLevel)
+                    {
+                        return parents[0].Path;
+                    }
+                }
+            }
+        }
 
     public class Node
     {
@@ -116,8 +135,8 @@ namespace TwentyFortyEight
     {
         Left,
         Up,
-        Down,
         Right,
+        Down,
     }
 
     public class Grid
@@ -127,7 +146,7 @@ namespace TwentyFortyEight
 
         public readonly int Size;
         private int[] _buffer;
-        private bool _changed;
+        public bool Changed { get; private set; }
         private readonly int[,] _cells;
 
 
@@ -150,6 +169,7 @@ namespace TwentyFortyEight
         
         public void Move(Direction direction)
         {
+            Changed = false;
             switch (direction)
             {
                 case Direction.Up: MoveVertical(0, Size, 1); break;
@@ -160,10 +180,9 @@ namespace TwentyFortyEight
                     throw new ArgumentOutOfRangeException(nameof(direction), direction, null);
             }
 
-            if (_changed)
+            if (Changed)
             {
                 SpawnTile();
-                _changed = false;
             }
         }
 
@@ -208,7 +227,7 @@ namespace TwentyFortyEight
 
             if (values[target] == 0)
             {
-                _changed = true;
+                Changed = true;
                 
                 values[target] = values[source];
                 values[source] = 0;
@@ -217,7 +236,7 @@ namespace TwentyFortyEight
 
             if (values[source] == values[target])
             {
-                _changed = true;
+                Changed = true;
                 
                 values[target] *= 2;
                 values[source] = 0;
