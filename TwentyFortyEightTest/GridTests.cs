@@ -542,5 +542,43 @@ namespace TwentyFortyEightTest
             
             Assert.True(equal);
         }
+        
+        [Test]
+        public void TestGridMove_()
+        {
+            const int size = 4;
+            const int dataSize = size * size;
+           
+            bool equal = true;
+            var grid = new Grid(size);
+
+            var data0 = new[]
+            {
+                2, 4, 16, 4,
+                0, 2, 8, 4,
+                0, 0, 0, 4,
+                0, 0, 0, 0
+            };
+            
+            var check0 = new[]
+            {
+                2, 4, 16, 4,
+                0, 2, 8, 4,
+                0, 0, 0, 4,
+                0, 0, 0, 0
+            };
+
+            grid.SetData(data0);
+            // grid.Move(Direction.Right);
+            grid.Move(2);
+
+            var data = grid.GetData();
+            for (int i = 0; i < dataSize; i++)
+            {
+                equal &= data[i] == check0[i];
+            }
+            
+            Assert.True(equal);
+        }
     }
 }
