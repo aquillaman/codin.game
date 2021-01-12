@@ -1,17 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace TwentyFortyEight
 {
     internal class Player
     {
         private const int Size = 4;
-        
+
         public static void Main(string[] args)
         {
-            int[] data = new int[Size*Size];
-            var search = new BeamSearch(Size);
+            int[] data = new int[Size * Size];
+            var search = new BeamSearch(Size, 5);
             // game loop
             while (true)
             {
@@ -29,96 +30,108 @@ namespace TwentyFortyEight
                         data[index++] = cell;
                     }
                 }
-                
-                // Console.Error.WriteLine($"seed: {seed}");
-                // Console.Error.WriteLine($"score: {score}");
-                // Console.Error.WriteLine($"data: {string.Join(",", data)}");
+
+                Console.Error.WriteLine($"seed: {seed}");
+                Console.Error.WriteLine($"score: {score}");
+                Console.Error.WriteLine($"data: {string.Join(",", data)}");
 
                 // Write an action using Console.WriteLine()
                 // To debug: Console.Error.WriteLine("Debug messages...");
 
-                Console.WriteLine("" + search.SearchBestMoves(seed, score, data));
+                Console.WriteLine("-" + search.SearchBestMoves(seed, score, data));
             }
         }
     }
-    
+
     public class BeamSearch
+    {
+        private readonly Dictionary<Direction, string> _dirsMap = new Dictionary<Direction, string>()
         {
-            private readonly Grid Grid;
-            private readonly int MaxPredictionLevel;
+            {Direction.Up, "U"},
+            {Direction.Down, "D"},
+            {Direction.Left, "L"},
+            {Direction.Right, "R"},
+        };
 
-            public BeamSearch(int gridSize, int predictionLevel = 5)
+        // private readonly Direction[] _dirs = {Direction.Down, Direction.Left, Direction.Right, Direction.Up};
+        private readonly Direction[] _dirs = {Direction.Left, Direction.Down, Direction.Right, Direction.Up};
+        // private readonly Direction[] _dirs = {Direction.Left, Direction.Up, Direction.Right, Direction.Down};
+        
+        private readonly Grid Grid;
+        private readonly int MaxPredictionLevel;
+
+        public BeamSearch(int gridSize, int predictionLevel)
+        {
+            Grid = new Grid(gridSize);
+            MaxPredictionLevel = predictionLevel;
+        }
+
+        public string SearchBestMoves(int seed, int score, int[] data)
+        {
+            int predictionLevel = 0;
+
+            var parents = new Queue<Node>(new[] {new Node {Data = data, Seed = seed, Score = score}});
+            var children = new List<Node>();
+
+            var count = parents.Count;
+            while (count-- > 0)
             {
-                Grid = new Grid(gridSize);
-                MaxPredictionLevel = predictionLevel;
-            }
+                var parent = parents.Dequeue();
 
-            public string SearchBestMoves(int seed, int score, int[] data)
-            {
-                int predictionLevel = 0;
-                
-                string[] dirs = {"L","U","R","D"};
-
-                var parents = new List<Node> {new Node {Data = data, Seed = seed, Score = score}};
-                var children = new List<Node>();
-
-                while (true)
+                for (int i = 0; i < _dirs.Length; i++)
                 {
-                    for (int j = 0; j < parents.Count; j++)
-                    {
-                        var parent = parents[j];
-                
-                        for (int i = 0; i < dirs.Length; i++)
-                        {
-                            Grid.Seed = parent.Seed;
-                            Grid.Score = parent.Score;
-                            Grid.SetData(parent.Data);
-                    
-                            Grid.Move(i);
+                    Grid.Seed = parent.Seed;
+                    Grid.Score = parent.Score;
+                    Grid.SetData(parent.Data);
 
-                            if (Grid.Changed)
-                            {
-                                Node node = Node.Create(dirs[i], parent);
-                                node.Seed = Grid.Seed;
-                                node.Score = Grid.Score;
-                                node.Data = Grid.GetData();
-                    
-                                children.Add(node);
-                            }
-                        }
-                    }
+                    Grid.Move(_dirs[i]);
 
-                    int max = int.MinValue;
-                    for (var i = 0; i < children.Count; i++)
-                    {
-                        var child = children[i];
-                        
-                        if (max < child.Score)
-                        {
-                            parents.Clear();
-                            max = child.Score;
-                        }
+                    if (!Grid.Changed) continue; // get rid of invalid moves
 
-                        if (max == child.Score)
-                        {
-                            parents.Add(child);
-                        }
-                    }
+                    Node node = Node.Create(_dirsMap[_dirs[i]], parent);
+                    node.Seed = Grid.Seed;
+                    node.Score = Grid.Score;
+                    node.FreeCells = Grid.FreeCells;
+                    node.Data = Grid.GetData();
 
-                    children.Clear();
-                
-                    if (predictionLevel++ > MaxPredictionLevel)
-                    {
-                        return parents[0].Path;
-                    }
+                    children.Add(node);
+                    parents.Enqueue(node);
+                }
+
+                if (count <= 0)
+                {
+                    predictionLevel++;
+                    count = parents.Count;
+                }
+
+                if (predictionLevel >= MaxPredictionLevel)
+                {
+                    children.Sort(Comparison);
+                    return children[0].Path;
                 }
             }
+
+            children.Sort(Comparison);
+            return children[0].Path;
         }
+
+        private int Comparison(Node x, Node y)
+        {
+            if (x.Score < y.Score) return 1;
+            if (x.Score > y.Score) return -1;
+            
+            if (x.FreeCells < y.FreeCells) return 1;
+            if (x.FreeCells > y.FreeCells) return -1;
+
+            return 0;
+        }
+    }
 
     public class Node
     {
         public int[] Data;
         public int Score;
+        public int FreeCells;
         public long Seed;
         public string Path;
 
@@ -143,6 +156,7 @@ namespace TwentyFortyEight
     {
         public long Seed;
         public int Score { get; set; }
+        public int FreeCells { get; private set; }
 
         public readonly int Size;
         private int[] _buffer;
@@ -156,7 +170,7 @@ namespace TwentyFortyEight
             _cells = new int[size, size];
             _buffer = new int[size];
         }
-        
+
         public Grid(int size, int seed = 100500) : this(size)
         {
             Seed = seed;
@@ -166,15 +180,15 @@ namespace TwentyFortyEight
         {
             Move((Direction) direction);
         }
-        
+
         public void Move(Direction direction)
         {
             Changed = false;
             switch (direction)
             {
-                case Direction.Up: MoveVertical(0, Size, 1); break;
-                case Direction.Down: MoveVertical(0, Size, -1); break;
-                case Direction.Left: MoveHorizontal(0, Size, 1); break;
+                case Direction.Up:    MoveVertical(0, Size, 1);    break;
+                case Direction.Down:  MoveVertical(0, Size, -1);   break;
+                case Direction.Left:  MoveHorizontal(0, Size, 1);  break;
                 case Direction.Right: MoveHorizontal(0, Size, -1); break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(direction), direction, null);
@@ -213,12 +227,11 @@ namespace TwentyFortyEight
             {
                 for (int i = max; i > min; i--)
                 {
-                    min = Move(i, i-1, min, ref values);  
+                    min = Move(i, i - 1, min, ref values);
                 }
             }
         }
-        
-        
+
         private int Move(int source, int target, int min, ref int[] values)
         {
             if (source == target) throw new InvalidOperationException($"source == target {source}=={target}");
@@ -228,7 +241,7 @@ namespace TwentyFortyEight
             if (values[target] == 0)
             {
                 Changed = true;
-                
+
                 values[target] = values[source];
                 values[source] = 0;
                 return min;
@@ -237,7 +250,7 @@ namespace TwentyFortyEight
             if (values[source] == values[target])
             {
                 Changed = true;
-                
+
                 values[target] *= 2;
                 values[source] = 0;
                 Score += values[target];
@@ -265,8 +278,6 @@ namespace TwentyFortyEight
 
             Seed = Seed * Seed % 50515093L;
         }
-
-        #region Data accessors
 
         public void GetRow(int row, int dir, ref int[] values)
         {
@@ -299,7 +310,7 @@ namespace TwentyFortyEight
                 _cells[col, dir < 0 ? Size - 1 - row : row] = values[row];
             }
         }
-        
+
         public void SetData(int[] data)
         {
             if (data.Length != Size * Size)
@@ -316,32 +327,32 @@ namespace TwentyFortyEight
                 }
             }
         }
-        
+
         public void SetData(int x, int y, int value)
         {
             if (x < 0 || y < 0 || x > Size - 1 || y > Size - 1)
             {
                 throw new InvalidDataException($"x: {x} or y: {y} out of grid size: {Size}");
             }
-            
+
             _cells[x, y] = value;
         }
-        
+
         public int[] GetData()
         {
+            FreeCells = 0;
+            
             var i = 0;
             int[] data = new int[Size * Size];
             for (int y = 0; y < Size; y++)
             {
                 for (int x = 0; x < Size; x++)
                 {
-                    data[i++] = _cells[x, y];
+                    if ((data[i++] = _cells[x, y]) == 0) FreeCells++;
                 }
             }
 
             return data;
         }
-
-        #endregion
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using NUnit.Framework;
 using TwentyFortyEight;
 
@@ -9,30 +10,24 @@ namespace TwentyFortyEightTest
     public class BeamSearchTests
     {
         private const int Size = 4;
-        private static readonly Grid Grid = new Grid(Size);
-        
+
         [Test]
         public void TestBeamSearch()
         {
-            
-            // seed: 36244611
-            // score: 52
-            // data: 2,4,16,4,0,2,8,4,0,0,0,4,0,0,0,0
-            // R
-            
-            int seed = 8801316;
-            int score = 52;
-            int[] data = 
+            // seed: 41351857
+            // score: 48968
+            // data: 8,128,16,8,16,32,4096,512,4,64,32,8,256,8,4,0
+
+            int seed = 41351857;
+            int score = 48968;
+            int[] data =
             {
-                2,4,16,4,0,2,8,4,0,0,0,4,0,0,0,0
+                8, 128, 16, 8, 16, 32, 4096, 512, 4, 64, 32, 8, 256, 8, 4, 0
             };
 
-            var search = new BeamSearch(Size, 1);
-
+            var search = new BeamSearch(Size, 10);
             var searchBestMoves = search.SearchBestMoves(seed, score, data);
-
-            Assert.True(false);
+            Assert.Null(searchBestMoves);
         }
-        
     }
 }
