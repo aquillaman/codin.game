@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace TwentyFortyEight
 {
@@ -12,7 +11,7 @@ namespace TwentyFortyEight
         public static void Main(string[] args)
         {
             int[] data = new int[Size * Size];
-            var search = new BeamSearch(Size, 5);
+            var search = new BeamSearch(Size, 6);
             // game loop
             while (true)
             {
@@ -53,9 +52,7 @@ namespace TwentyFortyEight
             {Direction.Right, "R"},
         };
 
-        // private readonly Direction[] _dirs = {Direction.Down, Direction.Left, Direction.Right, Direction.Up};
-        private readonly Direction[] _dirs = {Direction.Left, Direction.Down, Direction.Right, Direction.Up};
-        // private readonly Direction[] _dirs = {Direction.Left, Direction.Up, Direction.Right, Direction.Down};
+        private readonly Direction[] _dirs = {Direction.Down, Direction.Left, Direction.Right, Direction.Up};
         
         private readonly Grid Grid;
         private readonly int MaxPredictionLevel;
@@ -117,12 +114,22 @@ namespace TwentyFortyEight
 
         private int Comparison(Node x, Node y)
         {
+            if (x.Data[12] < y.Data[12]) return 1;
+            if (x.Data[12] > y.Data[12]) return -1;
+
+            if (x.Data[13] < y.Data[13]) return 1;
+            if (x.Data[13] > y.Data[13]) return -1;
+
+            if (x.Data[14] < y.Data[14]) return 1;
+            if (x.Data[14] > y.Data[14]) return -1;
+
+            if (x.Data[15] < y.Data[15]) return 1;
+            if (x.Data[15] > y.Data[15]) return -1;
+
             if (x.Score < y.Score) return 1;
             if (x.Score > y.Score) return -1;
-            
-            if (x.FreeCells < y.FreeCells) return 1;
-            if (x.FreeCells > y.FreeCells) return -1;
 
+                       
             return 0;
         }
     }

@@ -14,15 +14,18 @@ namespace TwentyFortyEightTest
         [Test]
         public void TestBeamSearch()
         {
-            // seed: 41351857
-            // score: 48968
-            // data: 8,128,16,8,16,32,4096,512,4,64,32,8,256,8,4,0
+            // seed: 29217049
+            // score: 14400
+            // data: 0,32,2,8,0,1024,512,64,0,32,256,4,0,0,4,2
 
-            int seed = 41351857;
-            int score = 48968;
+            int seed = 29217049;
+            int score = 14400;
             int[] data =
             {
-                8, 128, 16, 8, 16, 32, 4096, 512, 4, 64, 32, 8, 256, 8, 4, 0
+                0,   32,   2,  8,
+                0, 1024, 512, 64,
+                0,   32, 256,  4,
+                0,    0,   4,  2
             };
 
             var search = new BeamSearch(Size, 10);
